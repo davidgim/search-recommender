@@ -62,20 +62,21 @@ def upsert_ranking(query, result_id, clicks=0, views=0, purchases=0, user_id=Non
     try:
         cur = conn.cursor()
         score = (clicks * 3) + (views * 1) + (purchases * 10)
-        if user_id is None:
-            cur.execute("""
-                INSERT INTO global_rankings (query, result_id, total_clicks, total_views,
-                total_purchases, score, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, NOW())
-                ON CONFLICT (query, result_id)
-                DO UPDATE SET
-                    total_clicks = global_rankings.total_clicks + EXCLUDED.total_clicks,
-                    total_views = global_rankings.total_views + EXCLUDED.total_views,
-                    total_purchases = global_rankings.total_purchases + EXCLUDED.total_purchases,
-                    score = global_rankings.score + EXCLUDED.score,
-                    updated_at = NOW()
-            """, (query, result_id, clicks, views, purchases, score))
-        else:
+        # always update global rankings
+        cur.execute("""
+            INSERT INTO global_rankings (query, result_id, total_clicks, total_views,
+            total_purchases, score, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, NOW())
+            ON CONFLICT (query, result_id)
+            DO UPDATE SET
+                total_clicks = global_rankings.total_clicks + EXCLUDED.total_clicks,
+                total_views = global_rankings.total_views + EXCLUDED.total_views,
+                total_purchases = global_rankings.total_purchases + EXCLUDED.total_purchases,
+                score = global_rankings.score + EXCLUDED.score,
+                updated_at = NOW()
+        """, (query, result_id, clicks, views, purchases, score))
+        # additionally update user rankings if user_id is provided
+        if user_id is not None:
             cur.execute("""
                 INSERT INTO user_rankings (query, result_id, user_id, total_clicks, total_views,
                 total_purchases, score, updated_at)
