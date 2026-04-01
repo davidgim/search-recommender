@@ -10,18 +10,24 @@ user = os.environ.get("POSTGRES_USER")
 password = os.environ.get("POSTGRES_PASSWORD")
 db = os.environ.get("POSTGRES_DB")
 
-_pool = SimpleConnectionPool(
-    minconn=1,
-    maxconn=10,
-    host=host,
-    port=port,
-    user=user,
-    password=password,
-    dbname=db
-)
+_pool = None
+
+def _get_pool():
+    global _pool
+    if _pool is None:
+        _pool = SimpleConnectionPool(
+            minconn=1,
+            maxconn=10,
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            dbname=db
+        )
+    return _pool
 
 def init_db():
-    conn = _pool.getconn()
+    conn = _get_pool().getconn()
     try:
         cur = conn.cursor()
         cur.execute("""CREATE TABLE IF NOT EXISTS global_rankings(
@@ -49,10 +55,10 @@ def init_db():
         )
         conn.commit()
     finally:
-        _pool.putconn(conn)
+        _get_pool().putconn(conn)
 
 def upsert_ranking(query, result_id, clicks=0, views=0, purchases=0, user_id=None):
-    conn = _pool.getconn()
+    conn = _get_pool().getconn()
     try:
         cur = conn.cursor()
         score = (clicks * 3) + (views * 1) + (purchases * 10)
@@ -84,10 +90,10 @@ def upsert_ranking(query, result_id, clicks=0, views=0, purchases=0, user_id=Non
             """, (query, result_id, user_id, clicks, views, purchases, score))
         conn.commit()
     finally:
-        _pool.putconn(conn)
+        _get_pool().putconn(conn)
 
 def get_global_rankings(query, top_n=10):
-    conn = _pool.getconn()
+    conn = _get_pool().getconn()
     res = []
     try:
         cur = conn.cursor()
@@ -112,11 +118,11 @@ def get_global_rankings(query, top_n=10):
             for row in rows
         ]
     finally:
-        _pool.putconn(conn)
+        _get_pool().putconn(conn)
     return res
 
 def get_user_rankings(query, user_id, top_n=10):
-    conn = _pool.getconn()
+    conn = _get_pool().getconn()
     res = []
     try:
         cur = conn.cursor()
@@ -141,5 +147,8 @@ def get_user_rankings(query, user_id, top_n=10):
             for row in rows
         ]
     finally:
-        _pool.putconn(conn)
+        _get_pool().putconn(conn)
     return res
+
+def calculate_score(clicks, views, purchases):
+    return (clicks * 3) + (views * 1) + (purchases * 10)

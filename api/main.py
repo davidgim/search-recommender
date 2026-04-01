@@ -73,6 +73,9 @@ def recommend(
         reverse=True
     )
     return {"query": query, "user_id": user_id, "results": results[:top_n]}
+
+def blend_scores(global_score, personal_score):
+    return (global_score * 0.7) + (personal_score * 0.3)
             
 
 
